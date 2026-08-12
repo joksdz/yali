@@ -4,6 +4,59 @@
 #include <string.h>  // java.nio.charset.Charset (for working with C strings)
 #include <errno.h>
 
+//--------------------structs---------------
+typedef enum TokenType {
+  // Single-character tokens.
+  LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
+  COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
+
+  // One or two character tokens.
+  BANG, BANG_EQUAL,
+  EQUAL, EQUAL_EQUAL,
+  GREATER, GREATER_EQUAL,
+  LESS, LESS_EQUAL,
+
+  // Literals.
+  IDENTIFIER, STRING, NUMBER,
+
+  // Keywords.
+  AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
+  PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,EOFF
+}TokenType;
+
+typedef enum { VAL_NIL, VAL_NUMBER, VAL_STRING } LiteralType;
+
+typedef struct {
+    LiteralType type;
+    union {
+        double number;
+        char *string;
+    } as;
+} Literal;
+
+
+typedef struct Token{
+TokenType type;
+char *lexeme;
+int line;
+Literal literal;
+
+}Token;
+
+typedef struct {
+    Token *tokens;
+    int count;
+    int capacity;
+} TokenArray;
+
+typedef struct Scanner{
+int start;
+int current;
+int line;
+TokenArray tokens;
+}Scanner;
+
+
 //-----------func declaration---------------
 
 void runFile(char *path);
@@ -71,7 +124,20 @@ void runPrompt(){
 
 }
 void run(char *source){
+Scanner scan;
+TokenArray tokens = scan.tokens;
 
+
+
+
+}
+
+
+void error(int line , string message){
+report(line,"",message);
+}
+
+void report(int line, string where, string message){
 
 
 }
