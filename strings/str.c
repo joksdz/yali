@@ -1,12 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "stdlib.h"
-
-typedef struct string {
-char *data; 
-int len; 
-
-}string; 
+#include "str.h"
 
 //creates a string frome a char pointer source 
 string strCreate(const char*str){

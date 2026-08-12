@@ -1,16 +1,16 @@
 #include <stdio.h>   // java.io.BufferedReader, InputStreamReader
 #include <stdlib.h>  // java.nio.file.Files, java.util.List (for memory allocation)
 #include <stdbool.h> // Useful for I/O tracking and flags
-#include <string.h>  // java.nio.charset.Charset (for working with C strings)
-#include <errno.h>
+#include <string.h>  // java.nio.stringset.Charset (for working with C strings)
+#include "../strings/str.h" //string lib
 
 //--------------------structs---------------
 typedef enum TokenType {
-  // Single-character tokens.
+  // Single-stringacter tokens.
   LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
   COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
 
-  // One or two character tokens.
+  // One or two stringacter tokens.
   BANG, BANG_EQUAL,
   EQUAL, EQUAL_EQUAL,
   GREATER, GREATER_EQUAL,
@@ -30,14 +30,14 @@ typedef struct {
     LiteralType type;
     union {
         double number;
-        char *string;
+        string string;
     } as;
 } Literal;
 
 
 typedef struct Token{
 TokenType type;
-char *lexeme;
+string lexeme;
 int line;
 Literal literal;
 
@@ -50,6 +50,7 @@ typedef struct {
 } TokenArray;
 
 typedef struct Scanner{
+string source;
 int start;
 int current;
 int line;
@@ -59,10 +60,19 @@ TokenArray tokens;
 
 //-----------func declaration---------------
 
-void runFile(char *path);
+void runFile(string path);
 void runPrompt();
-void run(char *source);
-
+void run(string source);
+void report(int line, string where, string message);
+void error(int line , string message);
+Token makeToken(TokenType type, string lexeme, Literal literal, int line);
+TokenArray scanTokens(Scanner *scan);
+bool isAtEnd(Scanner *scan);
+char advance(Scanner *scan);
+void addToken(Scanner *scan ,TokenType type);
+void scanToken(Scanner *scan);
+void addTokenLiteral(Scanner *scan, TokenType type, Literal literal);
+void pushToken(TokenArray *arr, Token t);
 //--------------------main------------------
 int main(int argc,char *argv[]){
 
@@ -70,18 +80,19 @@ int main(int argc,char *argv[]){
 		printf("Usage: yali [script]");
 		return 64;
 	}else if (argc == 2){
-		runFile(argv[1]);
+   string file ; 
+file.data = argv[1];
+file.len = strlen(argv[1]);
+		runFile(file);
 	}else{
 	runPrompt();
 	}
 	return 0;
 
 }
-
-
 //----------------runFile--------------------
-void runFile(char *path){
-	FILE *file = fopen(path,"rb");
+void runFile(string path){
+	FILE *file = fopen(path.data,"rb");
 	if(file ==NULL){
 		perror("Error: Couldn't open the file");
 		 exit(66);
@@ -99,15 +110,17 @@ void runFile(char *path){
 		exit(66);
 	}
 
-	char *source = malloc(bytes+1);
-	long sizeRead = fread(source, 1, bytes, file);
-	if(sizeRead == bytes){
+	string source;
+	source.data = malloc(bytes +1);
+	long sizeRead = fread(source.data, 1, bytes, file);
+	if(sizeRead != bytes){
 		printf("Error:read size missmatch");
 	}
-	source[bytes] = '\0';
+	source.len  =sizeRead;
+	source.data[bytes] = '\0';
 	fclose(file);
 	run(source);
-	free(source);
+	free(source.data);
 }
 //------------------------runPrompt----------------
 
@@ -115,28 +128,116 @@ void runPrompt(){
 
  for (;;) { 
       printf("> ");
-      char *line;
-      scanf("%s",line);
-      if (line == NULL) break;
+      char buf[102400];
+      char *r =fgets(buf,102400,stdin);
+      if (r == NULL) break;
+
+      string line; 
+      line.data = buf ;
+      line.data[strcspn(line.data, "\n")] = '\0';
+     line.len = strlen(line.data);	
       run(line);
     }
 
 
 }
-void run(char *source){
-Scanner scan;
-TokenArray tokens = scan.tokens;
 
+//----------------------------makeToken------------------------------------
 
+Token makeToken(TokenType type, string lexeme, Literal literal, int line) {
+    Token t;
+    t.type = type;
+    t.lexeme = lexeme;
+    t.literal = literal;
+    t.line = line;
+    return t;
+}
+//-------------------isAtEnd-----------------------------------------------
+bool isAtEnd(Scanner *scan) {
+    return scan->current >= scan->source.len;
+}
+//--------------------scanTokens---------------------------------------------
+TokenArray scanTokens(Scanner *scan) {
+    while (!isAtEnd(scan)) {
+        scan->start = scan->current;
+        scanToken(scan);
+    }
 
+    Literal nilLiteral;
+    nilLiteral.type = VAL_NIL;
+    Token eofToken = makeToken(EOFF, strCreate(""), nilLiteral, scan->line);
+    pushToken(&scan->tokens, eofToken);
 
+    return scan->tokens;
+}
+//---------------------------scanToken--------------------------------------
+
+    void scanToken(Scanner *scan) {
+    char c = advance(scan);
+    switch (c) {
+      case '(': addToken(scan ,LEFT_PAREN); break;
+      case ')': addToken(scan ,RIGHT_PAREN); break;
+      case '{': addToken(scan ,LEFT_BRACE); break;
+      case '}': addToken(scan ,RIGHT_BRACE); break;
+      case ',': addToken(scan ,COMMA); break;
+      case '.': addToken(scan ,DOT); break;
+      case '-': addToken(scan ,MINUS); break;
+      case '+': addToken(scan ,PLUS); break;
+      case ';': addToken(scan ,SEMICOLON); break;
+      case '*': addToken(scan ,STAR); break; 
+    }
+  }
+//-----------------------------advance-------------------------------------
+char advance(Scanner *scan) {
+    return scan->source.data[scan->current++];
+}
+//----------------------------pushToken------------------------------------
+  void pushToken(TokenArray *arr, Token t) {
+    if (arr->count == arr->capacity) {
+        arr->capacity = arr->capacity == 0 ? 8 : arr->capacity * 2;
+        arr->tokens = realloc(arr->tokens, arr->capacity * sizeof(Token));
+    }
+    arr->tokens[arr->count++] = t;
+}
+//-----------------------------addTokenLiteral----------------------------
+void addTokenLiteral(Scanner *scan, TokenType type, Literal literal) {
+    string lexeme = subStr(scan->source.data, scan->start, scan->current);
+    Token t = makeToken(type, lexeme, literal, scan->line);
+    pushToken(&scan->tokens, t);
+}
+//---------------------addToken---------------------------------
+void addToken(Scanner *scan, TokenType type) {
+    Literal nilLiteral;
+    nilLiteral.type = VAL_NIL;
+    addTokenLiteral(scan, type, nilLiteral);
 }
 
+//------------------------run-----------------------------------
+void run(string source) {
+    Scanner scan;
+    scan.start = 0;
+    scan.current = 0;
+    scan.line = 1;
+    scan.tokens.tokens = NULL;
+    scan.tokens.count = 0;
+    scan.tokens.capacity = 0;
+    scan.source = source;
+    scanTokens(&scan);   
+                                 
+                                 
 
+    TokenArray tokens = scan.tokens;
+    int i = 0;
+    while (i < tokens.count) {
+        printf("%s\n", tokens.tokens[i].lexeme.data);
+        i++;
+    }
+}
+//-----------------------error--------------------------------------
 void error(int line , string message){
-report(line,"",message);
+report(line,strCreate(""),message);
 }
-
+//-----------------------------report---------------------------------
 void report(int line, string where, string message){
 
 
