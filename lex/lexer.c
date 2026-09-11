@@ -11,7 +11,7 @@
  */
 
 
-
+#include <ctype.h>
 #include <stdio.h>   // java.io.BufferedReader, InputStreamReader
 #include <stdlib.h>  // java.nio.file.Files, java.util.List (for memory allocation)
 #include <stdbool.h> // Useful for I/O tracking and flags
@@ -38,7 +38,7 @@ typedef enum TokenType {
   PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,EOFF
 }TokenType;
 
-typedef enum { VAL_NIL, VAL_NUMBER, VAL_STRING } LiteralType;
+typedef enum { VAL_NIL, VAL_NUMBER, VAL_STRING,VAL_IDENTIFIER } LiteralType;
 
 typedef struct {
     LiteralType type;
@@ -108,7 +108,6 @@ file.len = strlen(argv[1]);
 	runPrompt();
 	}
 	return 0;
-
 }
 //----------------runFile--------------------
 void runFile(string path){
@@ -117,9 +116,6 @@ void runFile(string path){
 		perror("Error: Couldn't open the file");
 		 exit(66);
 	}
-
-
-
 	fseek(file,0,SEEK_END);
 
 	long bytes = ftell(file);
@@ -129,7 +125,6 @@ void runFile(string path){
 		
 		exit(66);
 	}
-
 	string source;
 	source.data = malloc(bytes +1);
 	long sizeRead = fread(source.data, 1, bytes, file);
@@ -145,7 +140,6 @@ void runFile(string path){
 //------------------------runPrompt----------------
 
 void runPrompt(){
-
  for (;;) { 
       printf("> ");
       char buf[102400];
@@ -158,7 +152,6 @@ void runPrompt(){
      line.len = strlen(line.data);	
       run(line);
     }
-
 }
 
 //----------------------------makeToken------------------------------------
@@ -226,13 +219,36 @@ addTokenLiteral(scan,STRING,(Literal){VAL_STRING,value});
 bool isDigit(char c){
 return c >= '0' && c <= '9';
 }
+//-----------------------------identifier--------------------------------
+
+void identifier(Scanner *scan){
+	  while (isalnum(peek(scan))) advance(scan);
+
+    addTokenLiteral(scan,IDENTIFIER,(Literal){VAL_IDENTIFIER , subStr(scan->source.data,scan->start,scan->current).data});
+}
+
+
+//-----------------------------str2duble-----------------------------------
+double str2double(string str){
+char *end;
+double val = strtod(str.data,&end);
+if (val == 0 && end == str.data) return 0;
+return val;
+}
 //----------------------------Number-----------------------------------
 void number(Scanner *scan){
 while(isDigit(peek(scan))) advance(scan);
 if (peek(scan) == '.' && isDigit(peekNext(scan))) {
-	
+    advance(scan); //this consumes the . (since peak doesnt)
+    while (isDigit(peek(scan))) advance(scan); //(and this consumes the rest of the number after the .)
 }
+double value = str2double(subStr(scan->source.data,scan->start,scan->current));
+addTokenLiteral(scan,NUMBER,(Literal){VAL_NUMBER,.as={.number=value} });
+                         //                       ^
+			 //                       | 
+			 //                       thanks to zaizrnation annihilation for this one 
 }
+
 
 //---------------------------scanToken--------------------------------------
 
@@ -271,7 +287,10 @@ if (peek(scan) == '.' && isDigit(peekNext(scan))) {
 	default: 
 	if (isDigit(c)) {
 		number(scan);
-	}else{
+	}else if (isalpha(c)) {
+		identifier(scan);
+	}
+	else{
 		error(scan->line,"Unexpected character.");
 	}
 	break;
@@ -312,9 +331,6 @@ void run(string source) {
     scan.tokens.capacity = 0;
     scan.source = source;
     scanTokens(&scan);   
-                                 
-                                 
-
     TokenArray tokens = scan.tokens;
     int i = 0;
     while (i < tokens.count) {
