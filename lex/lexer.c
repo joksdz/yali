@@ -1,3 +1,17 @@
+// ik this code looks like ai gen but no its not its just my style :)
+/**
+ * _____ _                     _____                 _        
+ * |_   _| |                   /  __ \               | |       
+ * | | | |      _____   _____| /  \/ __ _ _ __   __| |_   _  
+ * | | | |     / _ \ \ / / _ \ |    / _` | '_ \ / _` | | | |
+ * _| |_| |___| (_) \ V /  __/ \__/\ (_| | | | | (_| | |_| |
+ * \___/\_____/\___/ \_/ \___|\____/\__,_|_| |_|\__,_|\__, |
+ *                                                     __/ |
+ *                                                    |___/  
+ */
+
+
+
 #include <stdio.h>   // java.io.BufferedReader, InputStreamReader
 #include <stdlib.h>  // java.nio.file.Files, java.util.List (for memory allocation)
 #include <stdbool.h> // Useful for I/O tracking and flags
@@ -29,8 +43,8 @@ typedef enum { VAL_NIL, VAL_NUMBER, VAL_STRING } LiteralType;
 typedef struct {
     LiteralType type;
     union {
-        double number;
         string string;
+        double number;
     } as;
 } Literal;
 
@@ -63,8 +77,8 @@ TokenArray tokens;
 void runFile(string path);
 void runPrompt();
 void run(string source);
-void report(int line, string where, string message);
-void error(int line , string message);
+void report(int line, string where, char * message);
+void error(int line , char * message);
 Token makeToken(TokenType type, string lexeme, Literal literal, int line);
 TokenArray scanTokens(Scanner *scan);
 bool isAtEnd(Scanner *scan);
@@ -73,6 +87,12 @@ void addToken(Scanner *scan ,TokenType type);
 void scanToken(Scanner *scan);
 void addTokenLiteral(Scanner *scan, TokenType type, Literal literal);
 void pushToken(TokenArray *arr, Token t);
+bool match(Scanner *scan,char c);
+void String(Scanner *scan);
+void number(Scanner *scan);
+bool isDigit(char c);
+char peek(Scanner *scan);
+char peekNext(Scanner *scan);
 //--------------------main------------------
 int main(int argc,char *argv[]){
 
@@ -139,7 +159,6 @@ void runPrompt(){
       run(line);
     }
 
-
 }
 
 //----------------------------makeToken------------------------------------
@@ -170,6 +189,51 @@ TokenArray scanTokens(Scanner *scan) {
 
     return scan->tokens;
 }
+
+//---------------------------match-------------------------------------
+bool match(Scanner *scan,char c){
+if (isAtEnd(scan)) return false;
+if(scan->source.data[scan->current] == c) return true;
+scan->current++;
+return true;
+}
+//-----------------------------peek-----------------------------------
+char peek(Scanner *scan){
+if (isAtEnd(scan)) return '\0';
+return scan->source.data[scan->current];
+}
+char peekNext(Scanner *scan){
+if (isAtEnd(scan)) return '\0';
+return scan->source.data[scan->current+1];
+}
+
+//----------------------------String-----------------------------------
+void String(Scanner *scan){
+while(peek(scan)!='\"' && !isAtEnd(scan)){
+if(peek(scan) == '\n') scan->line++;
+advance(scan);
+}
+
+if(isAtEnd(scan)){
+error(scan->line,"Unterminated string");
+return;
+}
+advance(scan);
+string value = subStr(scan->source.data,scan->start+1,scan->current-1);
+addTokenLiteral(scan,STRING,(Literal){VAL_STRING,value});
+}
+//-----------------------------isDigit-----------------------------------
+bool isDigit(char c){
+return c >= '0' && c <= '9';
+}
+//----------------------------Number-----------------------------------
+void number(Scanner *scan){
+while(isDigit(peek(scan))) advance(scan);
+if (peek(scan) == '.' && isDigit(peekNext(scan))) {
+	
+}
+}
+
 //---------------------------scanToken--------------------------------------
 
     void scanToken(Scanner *scan) {
@@ -185,6 +249,32 @@ TokenArray scanTokens(Scanner *scan) {
       case '+': addToken(scan ,PLUS); break;
       case ';': addToken(scan ,SEMICOLON); break;
       case '*': addToken(scan ,STAR); break; 
+      case '!': addToken(scan,match(scan,'=') ? BANG_EQUAL : BANG); break; 
+      case '=': addToken(scan,match(scan,'=') ? EQUAL_EQUAL : EQUAL); break; 
+      case '<': addToken(scan,match(scan,'=') ? LESS_EQUAL : LESS); break; 
+      case '>': addToken(scan,match(scan,'=') ? GREATER_EQUAL : GREATER); break; 
+      case '/':
+	if (match(scan,'/')) {
+	while (!isAtEnd(scan)&& peek(scan) != '\n') advance(scan);
+	} else {
+	addToken(scan ,SLASH);
+	}
+	break;
+      case ' ':
+      case '\r':
+      case '\t': break; //skips whitespace
+      case '\n':
+	scan->line++;
+	break;
+      case '"': String(scan); break;
+	
+	default: 
+	if (isDigit(c)) {
+		number(scan);
+	}else{
+		error(scan->line,"Unexpected character.");
+	}
+	break;
     }
   }
 //-----------------------------advance-------------------------------------
@@ -211,7 +301,6 @@ void addToken(Scanner *scan, TokenType type) {
     nilLiteral.type = VAL_NIL;
     addTokenLiteral(scan, type, nilLiteral);
 }
-
 //------------------------run-----------------------------------
 void run(string source) {
     Scanner scan;
@@ -234,11 +323,10 @@ void run(string source) {
     }
 }
 //-----------------------error--------------------------------------
-void error(int line , string message){
+void error(int line , char * message){
 report(line,strCreate(""),message);
 }
 //-----------------------------report---------------------------------
-void report(int line, string where, string message){
-
+void report(int line, string where, char* message){
 
 }
