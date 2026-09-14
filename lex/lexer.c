@@ -9,10 +9,15 @@
  *                                                     __/ |
  *                                                    |___/  
  */
-
+#include "../map/map.h"
 #include "lexer.h"
+Map *keywords;
+void initKeywords(Map *keywords);
 //--------------------main------------------
 int main(int argc,char *argv[]){
+
+ keywords = malloc(sizeof(Map)); //was left unallocated, dereferencing a NULL global pointer in initMap()
+ initKeywords(keywords);
 
 	if ( argc>2){
 		printf("Usage: yali [script]");
@@ -104,9 +109,12 @@ TokenArray scanTokens(Scanner *scan) {
 //---------------------------match-------------------------------------
 bool match(Scanner *scan,char c){
 if (isAtEnd(scan)) return false;
-if(scan->source.data[scan->current] == c) return true;
+if(scan->source.data[scan->current] == c){
 scan->current++;
 return true;
+}else{
+return false;
+}
 }
 //-----------------------------peek-----------------------------------
 char peek(Scanner *scan){
@@ -114,7 +122,7 @@ if (isAtEnd(scan)) return '\0';
 return scan->source.data[scan->current];
 }
 char peekNext(Scanner *scan){
-if (isAtEnd(scan)) return '\0';
+if (scan->current+1 >= scan->source.len) return '\0';
 return scan->source.data[scan->current+1];
 }
 
@@ -137,12 +145,38 @@ addTokenLiteral(scan,STRING,(Literal){VAL_STRING,value});
 bool isDigit(char c){
 return c >= '0' && c <= '9';
 }
+//----------------------------initKeywords-----------------------------------
+
+void initKeywords(Map *keywords){
+initMap(keywords);
+insertMap(keywords, strCreate("and"),    AND);
+insertMap(keywords, strCreate("class"),  CLASS);
+insertMap(keywords, strCreate("else"),   ELSE);
+insertMap(keywords, strCreate("false"),  FALSE);
+insertMap(keywords, strCreate("for"),    FOR);
+insertMap(keywords, strCreate("fun"),    FUN);
+insertMap(keywords, strCreate("if"),     IF);
+insertMap(keywords, strCreate("nil"),    NIL);
+insertMap(keywords, strCreate("or"),     OR);
+insertMap(keywords, strCreate("print"),  PRINT);
+insertMap(keywords, strCreate("return"), RETURN);
+insertMap(keywords, strCreate("super"),  SUPER);
+insertMap(keywords, strCreate("this"),   THIS);
+insertMap(keywords, strCreate("true"),   TRUE);
+insertMap(keywords, strCreate("var"),    VAR);
+insertMap(keywords, strCreate("while"),  WHILE);
+}
+bool isAlphaNumeric(char c) {
+    return isalnum((unsigned char)c) || c == '_';
+}
+
 //-----------------------------identifier--------------------------------
-
 void identifier(Scanner *scan){
-	  while (isalnum(peek(scan))) advance(scan);
-
-    addTokenLiteral(scan,IDENTIFIER,(Literal){VAL_IDENTIFIER , subStr(scan->source.data,scan->start,scan->current).data});
+	  while (isAlphaNumeric(peek(scan))) advance(scan);
+    string text =subStr(scan->source.data,scan->start, scan->current);
+    TokenType type = getValFromMap(keywords,text);
+    if (type == TOKEN_NONE) type = IDENTIFIER;
+    addTokenLiteral(scan,type,(Literal){VAL_IDENTIFIER , text.data});
 }
 
 
@@ -160,12 +194,15 @@ if (peek(scan) == '.' && isDigit(peekNext(scan))) {
     advance(scan); //this consumes the . (since peak doesnt)
     while (isDigit(peek(scan))) advance(scan); //(and this consumes the rest of the number after the .)
 }
-double value = str2double(subStr(scan->source.data,scan->start,scan->current));
+string s = subStr(scan->source.data,scan->start,scan->current);
+double value = str2double(s);
 addTokenLiteral(scan,NUMBER,(Literal){VAL_NUMBER,.as={.number=value} });
                          //                       ^
 			 //                       | 
 			 //                       thanks to zaizrnation annihilation for this one 
+strFree(&s);
 }
+
 
 
 //---------------------------scanToken--------------------------------------
@@ -256,6 +293,7 @@ void run(string source) {
         i++;
     }
 }
+
 //-----------------------error--------------------------------------
 void error(int line , char * message){
 report(line,strCreate(""),message);

@@ -1,0 +1,28 @@
+// sample script for testing the lexer
+var a = 10;
+var b = 20.5;
+var name = "yali";
+
+fun add(x, y) {
+  return x + y;
+}
+
+if (a < b and b != 0) {
+  print "a is less than b";
+} else {
+  print "nope";
+}
+
+class Animal {
+  speak() {
+    print this.name;
+  }
+}
+
+for (var i = 0; i < 3; i = i + 1) {
+  print i;
+}
+
+while (a >= 1) {
+  a = a - 1;
+}

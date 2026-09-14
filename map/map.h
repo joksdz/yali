@@ -1,6 +1,9 @@
+#ifndef MAP_H
+#define MAP_H
+
 #include "../lex/lexer.h"
 typedef struct {
-    char *key; 
+    string key; 
     TokenType val;
      
 } Entry;
@@ -12,12 +15,13 @@ typedef struct {
 } Map;
 
 
-unsigned long hash(char *key);
+unsigned long hash(string key);
 void initMap(Map *map);
 void freeMap(Map *map);
-void insertMap(Map *map, char *key, TokenType val);
-TokenType getValFromMap(Map *map, char *key);
-void delMap(Map *map, char *key);
+void insertMap(Map *map, string key, TokenType val);
+TokenType getValFromMap(Map *map, string key);
+void delMap(Map *map, string key);
 void dispMap(Map *map);
 
+#endif
 

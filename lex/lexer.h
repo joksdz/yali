@@ -1,9 +1,16 @@
+#ifndef LEXER_H
+#define LEXER_H
+
 #include <ctype.h>
 #include <stdio.h>   // java.io.BufferedReader, InputStreamReader
 #include <stdlib.h>  // java.nio.file.Files, java.util.List (for memory allocation)
 #include <stdbool.h> // Useful for I/O tracking and flags
 #include <string.h>  // java.nio.stringset.Charset (for working with C strings)
 #include "../strings/str.h" //string lib
+
+
+
+
 
 typedef enum TokenType {
   // Single-stringacter tokens.
@@ -36,6 +43,9 @@ typedef struct {
     } as;
 } Literal;
 
+ 
+
+
 
 typedef struct Token{
 TokenType type;
@@ -60,6 +70,7 @@ TokenArray tokens;
 }Scanner;
 
 
+
 //-----------func declaration---------------
 
 void runFile(string path);
@@ -81,4 +92,6 @@ void number(Scanner *scan);
 bool isDigit(char c);
 char peek(Scanner *scan);
 char peekNext(Scanner *scan);
+
+#endif
 
